@@ -2,25 +2,67 @@
 /* eslint-disable vue/no-multiple-template-root */
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
+import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { computed, useCssModule } from 'vue';
-import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	delete: [connection: Connection];
 }>();
 
-const props = defineProps<EdgeProps>();
+const props = defineProps<
+	EdgeProps & {
+		hovered?: boolean;
+	}
+>();
 
-const i18n = useI18n();
 const $style = useCssModule();
 
+const isFocused = computed(() => props.selected || props.hovered);
+
+const status = computed(() => props.data.status);
+const statusColor = computed(() => {
+	if (props.selected) {
+		return 'var(--color-background-dark)';
+	} else if (status.value === 'success') {
+		return 'var(--color-success)';
+	} else if (status.value === 'pinned') {
+		return 'var(--color-secondary)';
+	} else {
+		return 'var(--color-foreground-xdark)';
+	}
+});
+
 const edgeStyle = computed(() => ({
-	strokeWidth: 2,
 	...props.style,
+	strokeWidth: 2,
+	stroke: statusColor.value,
 }));
 
+const edgeLabel = computed(() => {
+	if (isFocused.value) {
+		return '';
+	}
+
+	return props.label;
+});
+
 const edgeLabelStyle = computed(() => ({
-	transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+	fill: statusColor.value,
+	transform: 'translateY(calc(var(--spacing-xs) * -1))',
+	fontSize: 'var(--font-size-xs)',
+}));
+
+const edgeToolbarStyle = computed(() => {
+	return {
+		transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+	};
+});
+
+const edgeToolbarClasses = computed(() => ({
+	[$style.edgeToolbar]: true,
+	[$style.edgeToolbarVisible]: isFocused.value,
+	nodrag: true,
+	nopan: true,
 }));
 
 const path = computed(() =>
@@ -49,35 +91,36 @@ function onDelete() {
 <template>
 	<BaseEdge
 		:id="id"
+		:class="$style.edge"
 		:style="edgeStyle"
 		:path="path[0]"
 		:marker-end="markerEnd"
-		:label="data?.label"
+		:label="edgeLabel"
 		:label-x="path[1]"
 		:label-y="path[2]"
-		:label-style="{ fill: 'white' }"
-		:label-show-bg="true"
-		:label-bg-style="{ fill: 'red' }"
-		:label-bg-padding="[2, 4]"
-		:label-bg-border-radius="2"
+		:label-style="edgeLabelStyle"
+		:label-show-bg="false"
 	/>
 	<EdgeLabelRenderer>
-		<div :class="[$style.edgeToolbar, 'nodrag', 'nopan']" :style="edgeLabelStyle">
-			<N8nIconButton
-				data-test-id="delete-connection-button"
-				type="tertiary"
-				size="small"
-				icon="trash"
-				:title="i18n.baseText('node.delete')"
-				@click="onDelete"
-			/>
-		</div>
+		<CanvasEdgeToolbar :class="edgeToolbarClasses" :style="edgeToolbarStyle" @delete="onDelete" />
 	</EdgeLabelRenderer>
 </template>
 
 <style lang="scss" module>
+.edge {
+	transition: stroke 0.3s ease;
+}
+
 .edgeToolbar {
-	pointer-events: all;
 	position: absolute;
+	opacity: 0;
+
+	&.edgeToolbarVisible {
+		opacity: 1;
+	}
+
+	&:hover {
+		opacity: 1;
+	}
 }
 </style>

@@ -24,7 +24,7 @@ export function useCanvasPanning(
 	/**
 	 * Updates the canvas offset position based on the mouse movement
 	 */
-	function panCanvas(e: MouseEvent) {
+	function panCanvas(e: MouseEvent | TouchEvent) {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
 
 		const [x, y] = getMousePosition(e);
@@ -49,7 +49,7 @@ export function useCanvasPanning(
 			return;
 		}
 
-		if (uiStore.isActionActive('dragActive')) {
+		if (uiStore.isActionActive['dragActive']) {
 			// If a node does currently get dragged we do not activate the selection
 			return;
 		}
@@ -95,7 +95,7 @@ export function useCanvasPanning(
 			return;
 		}
 
-		if (uiStore.isActionActive('dragActive')) {
+		if (uiStore.isActionActive['dragActive']) {
 			return;
 		}
 

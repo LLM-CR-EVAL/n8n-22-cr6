@@ -1,10 +1,11 @@
 import { Container } from 'typedi';
 import type { Scope } from '@sentry/node';
+import { GlobalConfig } from '@n8n/config';
 import { Credentials } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
-import config from '@/config';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import type { Project } from '@db/entities/Project';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -16,7 +17,6 @@ import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomName,
-	randomString,
 } from '../shared/random';
 import {
 	saveCredential,
@@ -685,7 +685,7 @@ describe('POST /credentials', () => {
 			//
 			.expect(400, {
 				code: 400,
-				message: "You don't have the permissions to save the workflow in this project.",
+				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
 });
@@ -1018,7 +1018,7 @@ describe('PATCH /credentials/:id', () => {
 
 describe('GET /credentials/new', () => {
 	test('should return default name for new credential or its increment', async () => {
-		const name = config.getEnv('credentials.defaultName');
+		const name = Container.get(GlobalConfig).credentials.defaultName;
 		let tempName = name;
 
 		for (let i = 0; i < 4; i++) {

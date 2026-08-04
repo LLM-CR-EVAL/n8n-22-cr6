@@ -13,11 +13,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Logger } from '@/Logger';
 import type {
-	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
 import { OwnershipService } from '@/services/ownership.service';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import { Project } from '@/databases/entities/Project';
 import { ProjectService } from '@/services/project.service';
@@ -101,16 +101,15 @@ export class EnterpriseWorkflowService {
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
-			const workflowCredential: CredentialUsedByWorkflow = {
+			const filledCred = this.ownershipService.addOwnedByAndSharedWith(credential);
+			workflow.usedCredentials?.push({
 				id: credentialId,
 				name: credential.name,
 				type: credential.type,
 				currentUserHasAccess: userCredentialIds.includes(credentialId),
-				sharedWith: [],
-				ownedBy: null,
-			};
-			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
-			workflow.usedCredentials?.push(workflowCredential);
+				homeProject: filledCred.homeProject,
+				sharedWithProjects: filledCred.sharedWithProjects,
+			});
 		});
 	}
 
@@ -142,7 +141,10 @@ export class EnterpriseWorkflowService {
 			throw new NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await this.credentialsService.getMany(user);
+		const allCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			user,
+			{ workflowId },
+		);
 
 		try {
 			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
@@ -159,7 +161,7 @@ export class EnterpriseWorkflowService {
 	validateWorkflowCredentialUsage(
 		newWorkflowVersion: WorkflowEntity,
 		previousWorkflowVersion: WorkflowEntity,
-		credentialsUserHasAccessTo: CredentialsEntity[],
+		credentialsUserHasAccessTo: Array<{ id: string }>,
 	) {
 		/**
 		 * We only need to check nodes that use credentials the current user cannot access,
